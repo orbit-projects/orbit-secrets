@@ -18,6 +18,36 @@ The v1 contract has no cache, watch loop, mutation API, or implicit environment-
 python -m pip install orbit-secrets orbit-secrets-aws
 ```
 
+To expose a safe provider access check in the Orbit CLI control room, install the optional Core
+integration and add its action to an explicitly registered application plugin:
+
+```bash
+python -m pip install 'orbit-secrets[control]' orbit-secrets-aws orbit-cli
+```
+
+```python
+from orbit.plugins import Plugin, PluginMetadata
+from orbit_secrets.control import secret_provider_control_actions
+from orbit_secrets_aws import AWSSecretsProvider
+
+
+class SecretsOperations(Plugin):
+    metadata = PluginMetadata(name="orbit-secrets-operations", version="0.1.0a1")
+
+    def __init__(self, provider: AWSSecretsProvider) -> None:
+        self._provider = provider
+        self.control_actions = secret_provider_control_actions(provider)
+
+    async def deactivate(self) -> None:
+        await self._provider.aclose()
+```
+
+Register and enable the plugin in the application as usual. The CLI masks the reference inputs;
+the action checks provider access and displays only the immutable version. It never displays or
+persists secret bytes. The application remains responsible for provider configuration, identity,
+authorization, and lifecycle cleanup. See [CLI integration](docs/operations/cli.md) for the full
+example and security limits.
+
 ## Resolve a value
 
 ```python
